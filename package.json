@@ -1,0 +1,19 @@
+{
+  "name": "digilar",
+  "version": "1.0.0",
+  "description": "A command line version of digilär",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/t0rre/digilar.git"
+  },
+  "author": "Tor Smedberg & Adam Jöeäär",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/t0rre/digilar/issues"
+  },
+  "homepage": "https://github.com/t0rre/digilar#readme"
+}
