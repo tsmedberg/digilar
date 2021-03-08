@@ -1,7 +1,7 @@
-const { Curl }    = require('node-libcurl');
 const fetch       = require('node-fetch');
 const querystring = require('querystring');
 const uuid        = require('uuid');
+const { https }   = require('follow-redirects');
 
 module.exports = {
     login
@@ -10,57 +10,57 @@ module.exports = {
 function login(user, password){
     return new Promise(resolve => {
         getSignatureCookies().then(cookieStr => {
-            const curl = new Curl();
-            curl.setOpt('URL', 'https://konto.nok.se/login/home/login');
-            curl.setOpt('FOLLOWLOCATION', true);
-
-            curl.setOpt(Curl.option.HTTPHEADER, ['content-type: application/x-www-form-urlencoded', 'cookie: ' + cookieStr])
-            curl.setOpt(Curl.option.POSTFIELDS, querystring.stringify({
-                login: user,
-                password: password
-            }));
-
-            curl.on('end', function (statusCode, data, headers) {
-                this.close();
-
-                if(headers.length < 2){
-                    resolve(false);
-                } else {
-                    let code = headers[1]["location"].split("code=")[1].split("&")[0];
-                    getAccessToken(code).then(token => {
-                        getUserInfo(token).then(info => {
-                            resolve({"user": info, "authCode": code, "accessToken": token});
-                        });
+            fetch("https://konto.nok.se/login/home/login", {
+                "headers": {
+                    "content-type": "application/x-www-form-urlencoded",
+                    "cookie": cookieStr
+                },
+                "body": querystring.stringify({
+                    login: user,
+                    password: password,
+                }),
+                "method": "POST"
+            }).then(res => {
+                let code = res.url.split("code=")[1].split("&")[0];
+                getAccessToken(code).then(token => {
+                    getUserInfo(token).then(info => {
+                        resolve({"user": info, "authCode": code, "accessToken": token});
                     });
-                }
-            });
-
-            curl.on('error', curl.close.bind(curl));
-            curl.perform();
+                });
+            })
         });
     });
 }
 
 function getSignatureCookies(){
     return new Promise(resolve => {
-        const curl = new Curl();
-        curl.setOpt('URL', 'https://konto.nok.se/auth?client_id=app.digilar.se&redirect_uri=https://app.digilar.se/login&response_type=code'
-            + '&state=' + uuid.v4() + '&scope=openid%20profile%20offline_access&prompt=consent%20register%20onboarding');
-        curl.setOpt('FOLLOWLOCATION', true);
-
-        curl.on('end', function (statusCode, data, headers) {
-            this.close();
-
-            const cookies = [];
-            for(let cookie of headers[0]["Set-Cookie"]){
-                cookies.push(cookie.split("; ")[0]);
-            }
-
-            resolve(cookies.join("; "));
+        let data = querystring.stringify({
+            'client_id' : 'app.digilar.se',
+            'redirect_uri': 'https://app.digilar.se/login',
+            'response_type': 'code',
+            'state': uuid.v4(),
+            'scope': "openid profile offline_access",
+            "prompt": 'consent register onboarding'
         });
 
-        curl.on('error', curl.close.bind(curl));
-        curl.perform();
+        let options = {
+            host: 'konto.nok.se',
+            path: '/auth?' + data
+        };
+
+        options.beforeRedirect = (options, {headers}) => {
+            let setCookie = headers["set-cookie"];
+            if (setCookie != null) {
+                const cookies = [];
+                for(let cookie of setCookie){
+                    cookies.push(cookie.split("; ")[0]);
+                }
+
+                resolve(cookies.join("; "));
+            }
+        };
+
+        https.request(options).end();
     });
 }
 
@@ -71,7 +71,12 @@ function getAccessToken(authCode){
                 "accept": "application/json",
                 "content-type": "application/x-www-form-urlencoded",
             },
-            "body": "code=" + authCode + "&client_id=app.digilar.se&grant_type=authorization_code&redirect_uri=https%3A%2F%2Fapp.digilar.se%2Flogin",
+            "body": querystring.stringify({
+                "code": authCode,
+                "client_id": "app.digilar.se",
+                "grant_type": "authorization_code",
+                "redirect_uri": "https://app.digilar.se/login"
+            }),
             "method": "POST",
             "mode": "cors"
         }).then(res => res.json()).then(json => resolve(json["access_token"]));
@@ -85,11 +90,9 @@ function getUserInfo(authToken){
                 "accept": "application/json",
                 "authorization": "Bearer " + authToken,
             },
-
-            "body": null,
             "method": "GET",
             "mode": "cors"
         }).then(response => response.json())
-            .then(json => resolve({"uuid": json["sub"], "name": json["name"]}));
+          .then(json => resolve({"uuid": json["sub"], "name": json["name"]}));
     });
 }
