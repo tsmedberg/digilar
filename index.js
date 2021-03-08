@@ -17,6 +17,7 @@ let api;
         message: 'Lösenord:'
     });
 
+    console.log('[INFO]\t Logging in to digilär.')
     let login = await auth.login(username.value, password.value);
     if(!login){
         console.log("Fel användarnamn eller lösenord.");
@@ -28,6 +29,7 @@ let api;
     let user = login["user"];
     console.log("Välkommen " + user["name"] + "!");
 
+    console.log('[INFO]\t Getting courses for user.')
     api.getCourses().then(c => {
         console.log(c);
     })
