@@ -17,8 +17,8 @@
   },
   "homepage": "https://github.com/t0rre/digilar#readme",
   "dependencies": {
+    "follow-redirects": "^1.13.3",
     "node-fetch": "^2.6.1",
-    "node-libcurl": "^2.3.0",
     "prompts": "^2.4.0",
     "uuid": "^8.3.2"
   }
