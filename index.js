@@ -8,7 +8,7 @@ let api;
     const username = await prompts({
         type: 'text',
         name: 'value',
-        message: 'Användarnamn:'
+        message: 'Epostadress:'
     });
 
     const password = await prompts({
